@@ -14,7 +14,6 @@ type NovelController struct {
 
 // GET /novels
 func (c *NovelController) Get() ([]models.Novel, error) {
-	log.Printf("获取小说列表")
 	novels, ok := tools.MySQLGetAllNovels()
 	if !ok || len(novels) == 0 {
 		log.Printf("未获取到小说信息")
@@ -28,10 +27,20 @@ func (c *NovelController) Get() ([]models.Novel, error) {
 }
 
 // GET /novels/{id}
-func (c *NovelController) GetBy(id int64) (models.Novel, error) {
-	novel, ok := tools.MySQLGetNovelByID(id)
+func (c *NovelController) GetBy(novel_id string) (models.Novel, error) {
+	novel, ok := tools.MySQLGetNovelByID(novel_id)
 	if !ok {
-		log.Printf("获取小说 ID=%d 失败", id)
+		log.Printf("获取小说 ID=%v 失败", novel_id)
+		return models.Novel{}, fmt.Errorf("获取小说失败")
+	}
+	return novel, nil
+}
+
+// GET /novels/{id}
+func (c *NovelController) GetBy_novelid(novel_id string) (models.Novel, error) {
+	novel, ok := tools.MySQLGetNovelByID(novel_id)
+	if !ok {
+		log.Printf("获取小说 ID=%v 失败", novel_id)
 		return models.Novel{}, fmt.Errorf("获取小说失败")
 	}
 	return novel, nil
@@ -49,34 +58,34 @@ func (c *NovelController) Post(newNovel models.Novel) (models.Novel, error) {
 }
 
 // PUT /novels/{id}
-func (c *NovelController) PutBy(id int64, updated models.Novel) (models.Novel, error) {
-	updated.ID = id
+func (c *NovelController) PutBy(novel_id string, updated models.Novel) (models.Novel, error) {
+	updated.Novel_Id = novel_id
 	ok, err := tools.MySQLUpdateNovel(updated)
 	if err != nil || !ok {
-		log.Printf("更新小说 ID=%d 失败: %v", id, err)
+		log.Printf("更新小说 ID=%v 失败: %v", novel_id, err)
 		return updated, fmt.Errorf("更新小说失败")
 	}
 	return updated, nil
 }
 
 // DELETE /novels/{id}
-func (c *NovelController) DeleteBy(id int64) tools.Response {
-	ok, err := tools.MySQLDeleteNovel(id)
+func (c *NovelController) DeleteBy(novel_id string) tools.Response {
+	ok, err := tools.MySQLDeleteNovel(novel_id)
 	if err != nil || !ok {
-		log.Printf("删除小说 ID=%d 失败: %v", id, err)
+		log.Printf("删除小说 ID=%v 失败: %v", novel_id, err)
 		return tools.Fail(tools.ErrorCode.CodeDeleteNovelFailed)
 	}
 	return tools.Success(map[string]any{
-		"id": id,
+		"novel_id": novel_id,
 	})
 }
 
 // GET /novels/{novel_id}/chapters
-func (c *NovelController) GetByNovelId(novelID int64) ([]models.Chapter, error) {
+func (c *NovelController) GetByNovelId(novel_id string) ([]models.Chapter, error) {
 	log.Printf("获取小说  ")
-	chapters, ok := tools.MySQLGetChaptersByNovelID(novelID)
+	chapters, ok := tools.MySQLGetChaptersByNovelID(novel_id)
 	if !ok {
-		log.Printf("获取小说 ID=%d 的章节失败", novelID)
+		log.Printf("获取小说 ID=%V 的章节失败", novel_id)
 		return nil, fmt.Errorf("获取章节失败")
 	}
 	return chapters, nil

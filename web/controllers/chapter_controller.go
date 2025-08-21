@@ -14,10 +14,10 @@ type ChapterController struct {
 
 // GET /chapters/{novel_id}/{chapter_index}
 // 根据小说ID + 章节索引获取章节
-func (c *ChapterController) Get(novelID int64, chapterIndex int) (models.Chapter, error) {
-	chapter, ok := tools.MySQLGetChapterByNovelIDAndIndex(novelID, chapterIndex)
+func (c *ChapterController) Get(novel_id string, chapterIndex int) (models.Chapter, error) {
+	chapter, ok := tools.MySQLGetChapterByNovelIDAndIndex(novel_id, chapterIndex)
 	if !ok {
-		log.Printf("获取小说 ID=%d 第 %d 章失败", novelID, chapterIndex)
+		log.Printf("获取小说 ID=%v 第 %d 章失败", novel_id, chapterIndex)
 		return models.Chapter{}, fmt.Errorf("获取章节失败")
 	}
 	return chapter, nil
@@ -25,12 +25,12 @@ func (c *ChapterController) Get(novelID int64, chapterIndex int) (models.Chapter
 
 // POST /chapters/{novel_id}
 // 新增章节
-func (c *ChapterController) Post(novelID int64, newChapter models.Chapter) (models.Chapter, error) {
-	newChapter.NovelID = novelID
+func (c *ChapterController) Post(novel_id string, newChapter models.Chapter) (models.Chapter, error) {
+	newChapter.NovelID = novel_id
 	// 查询该小说最新的章节序号
-	latestIndex, err := tools.MySQLGetLatestChapterIndex(novelID)
+	latestIndex, err := tools.MySQLGetLatestChapterIndex(novel_id)
 	if err != nil {
-		log.Printf("获取小说 ID=%d 的最新章节序号失败: %v", novelID, err)
+		log.Printf("获取小说 ID=%V 的最新章节序号失败: %v", novel_id, err)
 		return newChapter, err
 	}
 
@@ -38,7 +38,7 @@ func (c *ChapterController) Post(novelID int64, newChapter models.Chapter) (mode
 	newChapter.ChapterIndex = latestIndex + 1
 	id, err := tools.MySQLCreateChapter(newChapter)
 	if err != nil {
-		log.Printf("创建小说 ID=%d 的章节失败: %v", novelID, err)
+		log.Printf("创建小说 ID=%v 的章节失败: %v", novel_id, err)
 		return newChapter, err
 	}
 	newChapter.ID = id
@@ -50,7 +50,7 @@ func (c *ChapterController) Post(novelID int64, newChapter models.Chapter) (mode
 	}
 	err = tools.MySQLCreateChapterDetail(newChapter.NovelID, chapterDetail)
 	if err != nil {
-		log.Printf("同步更新小说 ID=%d 章节目录失败: %v", novelID, err)
+		log.Printf("同步更新小说 ID=%v 章节目录失败: %v", novel_id, err)
 		// 这里可以选择忽略错误或者返回错误，看业务需求
 	}
 	return newChapter, nil
@@ -58,10 +58,10 @@ func (c *ChapterController) Post(novelID int64, newChapter models.Chapter) (mode
 
 // PUT /chapters/{novel_id}/{chapter_index}
 // 更新章节
-func (c *ChapterController) Put(novelID int64, chapterIndex int, updated models.Chapter) (models.Chapter, error) {
-	ok, err := tools.MySQLUpdateChapterByNovelIDAndIndex(novelID, chapterIndex, updated)
+func (c *ChapterController) Put(novel_id string, chapterIndex int, updated models.Chapter) (models.Chapter, error) {
+	ok, err := tools.MySQLUpdateChapterByNovelIDAndIndex(novel_id, chapterIndex, updated)
 	if err != nil || !ok {
-		log.Printf("更新小说 ID=%d 第 %d 章失败: %v", novelID, chapterIndex, err)
+		log.Printf("更新小说 ID=%v 第 %d 章失败: %v", novel_id, chapterIndex, err)
 		return updated, fmt.Errorf("更新章节失败")
 	}
 	return updated, nil
@@ -69,29 +69,29 @@ func (c *ChapterController) Put(novelID int64, chapterIndex int, updated models.
 
 // DELETE /chapters/{novel_id}/{chapter_index}
 // 删除章节（只允许删除最新章节）
-func (c *ChapterController) Delete(novelID int64, chapterIndex int) tools.Response {
+func (c *ChapterController) Delete(novel_id string, chapterIndex int) tools.Response {
 	// 1. 查询该小说最新章节的序号
-	latestIndex, err := tools.MySQLGetLatestChapterIndex(novelID)
+	latestIndex, err := tools.MySQLGetLatestChapterIndex(novel_id)
 	if err != nil {
-		log.Printf("获取小说 ID=%d 的最新章节序号失败: %v", novelID, err)
+		log.Printf("获取小说 ID=%V 的最新章节序号失败: %v", novel_id, err)
 		return tools.Fail(tools.ErrorCode.CodeGetLatestIndexFail)
 	}
 
 	// 2. 判断是否是最新章节
 	if chapterIndex != latestIndex {
-		log.Printf("小说 ID=%d 尝试删除非最新章节 %d，最新章节是 %d", novelID, chapterIndex, latestIndex)
+		log.Printf("小说 ID=%v 尝试删除非最新章节 %d，最新章节是 %d", novel_id, chapterIndex, latestIndex)
 		return tools.Fail(tools.ErrorCode.CodeNotLatestChapter)
 	}
 
 	// 3. 删除最新章节
-	ok, err := tools.MySQLDeleteChapterByNovelIDAndIndex(novelID, chapterIndex)
+	ok, err := tools.MySQLDeleteChapterByNovelIDAndIndex(novel_id, chapterIndex)
 	if err != nil || !ok {
-		log.Printf("删除小说 ID=%d 第 %d 章失败: %v", novelID, chapterIndex, err)
+		log.Printf("删除小说 ID=%v 第 %d 章失败: %v", novel_id, chapterIndex, err)
 		return tools.Fail(tools.ErrorCode.CodeDeleteChapterFail)
 	}
 
 	return tools.Success(map[string]any{
-		"novel_id":      novelID,
+		"novel_id":      novel_id,
 		"chapter_index": chapterIndex,
 		"deleted":       true,
 	})

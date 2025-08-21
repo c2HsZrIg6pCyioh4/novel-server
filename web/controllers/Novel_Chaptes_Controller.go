@@ -12,10 +12,10 @@ type Novel_Chaptes_Controller struct {
 }
 
 // GET /novels/{id:uint}/chapters
-func (c *Novel_Chaptes_Controller) Get(id uint64) ([]models.ChapterDetail, error) {
-	chaptersdetail, ok := tools.MySQLGetChaptersDetailByNovelID(int64(id))
+func (c *Novel_Chaptes_Controller) Get(novel_id string) ([]models.ChapterDetail, error) {
+	chaptersdetail, ok := tools.MySQLGetChaptersDetailByNovelID(novel_id)
 	if !ok || len(chaptersdetail) == 0 {
-		log.Printf("获取小说 ID=%d 的章节为空或失败", id)
+		log.Printf("获取小说 ID=%v 的章节为空或失败", novel_id)
 		// 返回默认章节
 		return []models.ChapterDetail{
 			{
