@@ -43,8 +43,11 @@ type AppConfig struct {
 		CountryDBPath string `json:"countrydbpath"`
 		ASNDBPath     string `json:"asndbpath"`
 	} `json:"geolite"`
-	Mode        string `json:"mode"`
-	LoggerLevel string `json:"loggerlevel"`
+	Mode        string   `json:"mode"`
+	LoggerLevel string   `json:"loggerlevel"`
+	Tokens      []string `json:"Tokens"` // 修正这里
+	// Token 中间件相关配置
+	Auth_status bool `json:"auth_Status"` // 是否启用 Token 认证
 }
 
 var AppConfigInstance *AppConfig

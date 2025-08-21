@@ -39,6 +39,9 @@ func main() {
 	app.Use(prometheusMiddleware.New("novel", 0.3, 1.2, 5.0).ServeHTTP)
 	// 将日志记录器添加到中间件
 	app.Use(customLogger)
+	// Token authentication middleware
+	// 全局中间件，所有请求都需要 token
+	app.Use(tools.TokenAuthMiddleware(config.Tokens, config.Auth_status))
 	iris_redis_db := iris_redis.New(iris_redis.Config{
 		Network:   "tcp",
 		Addr:      config.Redis.Addr + ":" + config.Redis.Port,
