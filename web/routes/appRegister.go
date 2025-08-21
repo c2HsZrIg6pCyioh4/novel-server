@@ -7,4 +7,5 @@ import (
 func RegisterRoutes(app *iris.Application) {
 	// Novel routes
 	RegisterNovelRouter(app)
+	RegisterHealthRouter(app)
 }
