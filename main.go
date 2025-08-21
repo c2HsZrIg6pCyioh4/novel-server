@@ -36,7 +36,7 @@ func main() {
 	fmt.Println("App Name:", config.AppName)
 	fmt.Println("Port:", config.Port)
 	app := iris.New()
-	app.Use(prometheusMiddleware.New("openapi", 0.3, 1.2, 5.0).ServeHTTP)
+	app.Use(prometheusMiddleware.New("novel", 0.3, 1.2, 5.0).ServeHTTP)
 	// 将日志记录器添加到中间件
 	app.Use(customLogger)
 	iris_redis_db := iris_redis.New(iris_redis.Config{
@@ -45,7 +45,7 @@ func main() {
 		Password:  config.Redis.Password, // Specify your Redis password if required
 		Timeout:   time.Duration(30) * time.Second,
 		MaxActive: 10,
-		Prefix:    "openapi_session_id-",
+		Prefix:    "novel_session_id-",
 		Driver:    iris_redis.GoRedis(),
 	})
 	tools.InitSessionManager()

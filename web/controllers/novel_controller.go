@@ -14,11 +14,11 @@ type NovelController struct {
 
 // GET /novels
 func (c *NovelController) Get() ([]models.Novel, error) {
-	println("获取小说列表")
+	log.Printf("获取小说列表")
 	novels, ok := tools.MySQLGetAllNovels()
-	if !ok {
+	if !ok || len(novels) == 0 {
 		log.Printf("未获取到小说信息")
-		return nil, fmt.Errorf("未获取到小说信息")
+		return []models.Novel{}, nil
 	}
 	for _, novel := range novels {
 		log.Printf("小说: %v", novel)
@@ -60,11 +60,24 @@ func (c *NovelController) PutBy(id int64, updated models.Novel) (models.Novel, e
 }
 
 // DELETE /novels/{id}
-func (c *NovelController) DeleteBy(id int64) error {
+func (c *NovelController) DeleteBy(id int64) tools.Response {
 	ok, err := tools.MySQLDeleteNovel(id)
 	if err != nil || !ok {
 		log.Printf("删除小说 ID=%d 失败: %v", id, err)
-		return fmt.Errorf("删除小说失败")
+		return tools.Fail(tools.ErrorCode.CodeDeleteNovelFailed)
 	}
-	return nil
+	return tools.Success(map[string]any{
+		"id": id,
+	})
+}
+
+// GET /novels/{novel_id}/chapters
+func (c *NovelController) GetByNovelId(novelID int64) ([]models.Chapter, error) {
+	log.Printf("获取小说  ")
+	chapters, ok := tools.MySQLGetChaptersByNovelID(novelID)
+	if !ok {
+		log.Printf("获取小说 ID=%d 的章节失败", novelID)
+		return nil, fmt.Errorf("获取章节失败")
+	}
+	return chapters, nil
 }

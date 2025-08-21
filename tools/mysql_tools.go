@@ -141,6 +141,34 @@ func MySQLGetChaptersByNovelID(novelID int64) ([]models.Chapter, bool) {
 	return chapters, true
 }
 
+// MySQLGetChaptersByNovelID 获取某本小说的所有章节
+func MySQLGetChaptersDetailByNovelID(novelID int64) ([]models.ChapterDetail, bool) {
+	query := `
+		SELECT chapter_index,title
+		FROM chapters 
+		WHERE novel_id = ? 
+		ORDER BY chapter_index ASC
+	`
+	rows, err := db.Query(query, novelID)
+	if err != nil {
+		log.Printf("查询小说 ID=%d 的章节失败: %v", novelID, err)
+		return nil, false
+	}
+	defer rows.Close()
+
+	var chaptersdetail []models.ChapterDetail
+	for rows.Next() {
+		var c models.ChapterDetail
+		err := rows.Scan(&c.ChapterIndex, &c.Title)
+		if err != nil {
+			log.Printf("扫描章节数据失败: %v", err)
+			return nil, false
+		}
+		chaptersdetail = append(chaptersdetail, c)
+	}
+	return chaptersdetail, true
+}
+
 // MySQLGetChapterByID 根据ID获取章节
 func MySQLGetChapterByID(id int64) (models.Chapter, bool) {
 	var c models.Chapter
@@ -154,6 +182,72 @@ func MySQLGetChapterByID(id int64) (models.Chapter, bool) {
 		return c, false
 	}
 	return c, true
+}
+
+// 获取小说某一章（通过 novel_id + chapter_index）
+func MySQLGetChapterByNovelIDAndIndex(novelID int64, chapterIndex int) (models.Chapter, bool) {
+	query := `
+		SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
+		FROM chapters
+		WHERE novel_id = ? AND chapter_index = ?
+		LIMIT 1
+	`
+	row := db.QueryRow(query, novelID, chapterIndex)
+
+	var c models.Chapter
+	err := row.Scan(
+		&c.ID,
+		&c.NovelID,
+		&c.Title,
+		&c.Content,
+		&c.WordCount,
+		&c.ChapterIndex,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+	)
+	if err != nil {
+		log.Printf("查询小说 ID=%d 第 %d 章失败: %v", novelID, chapterIndex, err)
+		return models.Chapter{}, false
+	}
+	return c, true
+}
+
+func MySQLGetLatestChapter(novelID int64, chapter *models.Chapter) error {
+	query := `
+		SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
+		FROM chapters
+		WHERE novel_id = ?
+		ORDER BY chapter_index DESC
+		LIMIT 1
+	`
+	return db.QueryRow(query, novelID).Scan(
+		&chapter.ID,
+		&chapter.NovelID,
+		&chapter.Title,
+		&chapter.Content,
+		&chapter.WordCount,
+		&chapter.ChapterIndex,
+		&chapter.CreatedAt,
+		&chapter.UpdatedAt,
+	)
+}
+
+// 获取某本小说的最新章节序号
+func MySQLGetLatestChapterIndex(novelID int64) (int, error) {
+	var chapterIndex int
+	query := `SELECT COALESCE(MAX(chapter_index), 0) FROM chapters WHERE novel_id = ?`
+	err := db.QueryRow(query, novelID).Scan(&chapterIndex)
+	if err != nil {
+		return 0, err
+	}
+	return chapterIndex, nil
+}
+
+// MySQLCreateChapterDetail 新增文章目录
+func MySQLCreateChapterDetail(novelID int64, detail models.ChapterDetail) error {
+	query := `INSERT INTO chapter_details (novel_id, title, chapter_index) VALUES (?, ?, ?)`
+	_, err := db.Exec(query, novelID, detail.Title, detail.ChapterIndex)
+	return err
 }
 
 // MySQLCreateChapter 新增章节
@@ -192,4 +286,42 @@ func MySQLDeleteChapter(id int64) (bool, error) {
 	}
 	affected, _ := res.RowsAffected()
 	return affected > 0, nil
+}
+
+// 更新章节内容
+func MySQLUpdateChapterByNovelIDAndIndex(novelID int64, chapterIndex int, updated models.Chapter) (bool, error) {
+	query := `
+		UPDATE chapters
+		SET title = ?, content = ?, word_count = ?, updated_at = ?
+		WHERE novel_id = ? AND chapter_index = ?
+	`
+	result, err := db.Exec(query,
+		updated.Title,
+		updated.Content,
+		updated.WordCount,
+		time.Now(),
+		novelID,
+		chapterIndex,
+	)
+	if err != nil {
+		log.Printf("更新小说 ID=%d 第 %d 章失败: %v", novelID, chapterIndex, err)
+		return false, err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected > 0, nil
+}
+
+// 删除章节
+func MySQLDeleteChapterByNovelIDAndIndex(novelID int64, chapterIndex int) (bool, error) {
+	query := `
+		DELETE FROM chapters
+		WHERE novel_id = ? AND chapter_index = ?
+	`
+	result, err := db.Exec(query, novelID, chapterIndex)
+	if err != nil {
+		log.Printf("删除小说 ID=%d 第 %d 章失败: %v", novelID, chapterIndex, err)
+		return false, err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected > 0, nil
 }
