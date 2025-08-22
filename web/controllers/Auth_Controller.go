@@ -14,6 +14,6 @@ type Auth_Controller struct {
 // Post /validate-token
 func (c *Auth_Controller) Post() tools.Response {
 	return tools.Success(map[string]string{
-		"services": "ok",
+		"token": "ok",
 	})
 }
