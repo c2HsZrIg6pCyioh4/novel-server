@@ -17,3 +17,8 @@ type OAuthClientConfig struct {
 	Scope        string `json:"scope"`
 	ClientSecret string `json:"client_secret"`
 }
+
+// OAuthToken 返回给前端的配置
+type OAuthToken struct {
+	Token string `json:"token"`
+}
