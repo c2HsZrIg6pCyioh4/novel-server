@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/json"
+	"novel-server/web/models"
 	"os"
 )
 
@@ -48,6 +49,8 @@ type AppConfig struct {
 	Tokens      []string `json:"Tokens"` // 修正这里
 	// Token 中间件相关配置
 	Auth_status bool `json:"auth_Status"` // 是否启用 Token 认证
+	// ---------- 新增 OAuth 配置 ----------
+	OAuth map[string]models.OAuthConfig `json:"oauth"` // key: "apple", "google"
 }
 
 var AppConfigInstance *AppConfig
