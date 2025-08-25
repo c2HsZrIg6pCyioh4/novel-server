@@ -33,6 +33,11 @@ func TokenAuthMiddleware(validTokens []string, enableAuth bool) iris.Handler {
 			return
 		}
 
+		// 路径和方法判断
+		if strings.HasPrefix(ctx.Path(), "/oauth/") && strings.HasSuffix(ctx.Path(), "/post_callback") {
+			ctx.Next()
+			return
+		}
 		if ctx.Method() == http.MethodGet {
 			ctx.Next()
 			return
