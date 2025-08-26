@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/kataras/iris/v12"
+	"log"
 	"novel-server/tools"
 	"novel-server/web/models"
 )
@@ -28,11 +28,20 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 	var req AuthCallbackRequest
 	if provider == "apple" {
 		if err := c.Ctx.ReadJSON(&req); err != nil {
-			fmt.Println("解析回调参数失败:", err)
+			log.Println("解析回调参数失败:", err)
 			return models.OAuthToken{Token: ""}
 		}
 		tokenResponse, _ := tools.AppleExchangeCodeForToken(req.Code)
-		apple_user, _ := tools.AppleDecodeIDToken(tokenResponse["access_token"].(string))
+		accessToken, ok := tokenResponse["access_token"].(string)
+		if !ok || accessToken == "" {
+			log.Println("access_token 为空或类型错误:", tokenResponse)
+			return models.OAuthToken{Token: ""}
+		}
+		apple_user, err := tools.AppleDecodeIDToken(accessToken)
+		if err != nil {
+			log.Println("解析 Apple ID Token 失败:", err)
+			return models.OAuthToken{Token: ""}
+		}
 		use, _ := tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
 		tempToken, _ := tools.GenerateJWT(use.Sub, 4) // 4小时有效
 		return models.OAuthToken{
