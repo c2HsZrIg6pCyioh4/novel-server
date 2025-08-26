@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"novel-server/web/models"
@@ -80,21 +81,35 @@ func AppleExchangeCodeForToken(code string) (map[string]interface{}, error) {
 	values.Set("grant_type", "authorization_code")
 	values.Set("redirect_uri", config.OAuth["apple"].RedirectURI)
 
-	resp, err := http.PostForm("https://appleid.apple.com/auth/token", values)
+	// 设置超时客户端
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.PostForm("https://appleid.apple.com/auth/token", values)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("读取 Apple token 响应失败: %w", err)
+		return nil, nil
+	}
+	log.Println(resp.StatusCode)
+	log.Println(resp.Body)
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Apple token request failed: %s", string(body))
+		log.Println("Apple token 请求失败, status=%d, body=%s", resp.StatusCode, string(body))
+		return nil, nil
 	}
 
-	body, _ := io.ReadAll(resp.Body)
 	var tokenData map[string]interface{}
 	if err := json.Unmarshal(body, &tokenData); err != nil {
-		return nil, err
+		log.Println("解析 Apple token JSON 失败: %w, body=%s", err, string(body))
+		return nil, nil
 	}
+
+	// 打印返回结果，便于调试
+	log.Printf("Apple token response: %+v\n", tokenData)
+
 	return tokenData, nil
 }
 
