@@ -1,8 +1,11 @@
 package tools
 
 import (
+	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/kataras/iris/v12"
 )
@@ -22,28 +25,15 @@ func TokenAuthMiddleware(validTokens []string, enableAuth bool) iris.Handler {
 			ctx.Next()
 			return
 		}
-		// 路径和方法判断
-		if ctx.Path() == "/health" {
-			ctx.Next()
-			return
-		}
-		// 路径和方法判断
-		if strings.HasPrefix(ctx.Path(), "/oauth/") && strings.HasSuffix(ctx.Path(), "/callback") {
+
+		if ctx.Path() == "/health" ||
+			(strings.HasPrefix(ctx.Path(), "/oauth/") &&
+				(strings.HasSuffix(ctx.Path(), "/callback") || strings.HasSuffix(ctx.Path(), "/post_callback"))) ||
+			ctx.Method() == http.MethodGet {
 			ctx.Next()
 			return
 		}
 
-		// 路径和方法判断
-		if strings.HasPrefix(ctx.Path(), "/oauth/") && strings.HasSuffix(ctx.Path(), "/post_callback") {
-			ctx.Next()
-			return
-		}
-		if ctx.Method() == http.MethodGet {
-			ctx.Next()
-			return
-		}
-
-		// 获取 Header
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
 			sendFail(ctx, ErrorCode.AuthHeaderMissing)
@@ -55,12 +45,29 @@ func TokenAuthMiddleware(validTokens []string, enableAuth bool) iris.Handler {
 			return
 		}
 
-		token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 
-		// 校验 Token
-		if _, ok := tokenMap[token]; !ok {
+		// 1. 先验证本地静态 token
+		if _, ok := tokenMap[tokenString]; ok {
+			ctx.Next()
+			return
+		}
+
+		// 2. 再验证 JWT token
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			config, _ := GetAppConfig("config.yaml")
+			return config.JwtSecret, nil
+		})
+		if err != nil || !token.Valid {
 			sendFail(ctx, ErrorCode.AuthTokenInvalid)
 			return
+		}
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			ctx.Values().Set("user_sub", claims["sub"])
 		}
 
 		ctx.Next()
@@ -72,4 +79,16 @@ func sendFail(ctx iris.Context, code int) {
 	ctx.StatusCode(http.StatusUnauthorized)
 	ctx.JSON(Fail(code)) // 使用全局 Fail 函数，保证统一格式
 	ctx.StopExecution()
+}
+
+// GenerateJWT 生成短期 JWT token
+func GenerateJWT(userID string, expireHours int) (string, error) {
+	claims := jwt.MapClaims{
+		"sub": userID,
+		"exp": time.Now().Add(time.Duration(expireHours) * time.Hour).Unix(),
+		"iat": time.Now().Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	config, _ := GetAppConfig("config.yaml")
+	return token.SignedString(config.JwtSecret)
 }

@@ -12,11 +12,13 @@ import (
 )
 
 var db *sql.DB
+var dbOpenApi *sql.DB
 
 // InitMySQLClient 初始化 MySQL 客户端
 func InitMySQLClient() {
 	var config, _ = GetAppConfig("config.yaml")
 	var err error
+	// 主库连接
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.MySQL.Username, config.MySQL.Password, config.MySQL.Host, config.MySQL.Port, config.MySQL.Database)
 	db, err = sql.Open("mysql", dsn)
@@ -30,7 +32,24 @@ func InitMySQLClient() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err = db.Ping(); err != nil {
-		log.Fatal(err)
+		log.Fatal("main db ping error:", err)
+	}
+
+	// OpenAPI 日志库连接
+	dsnOpenApi := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		config.OpenApiMySQL.Username, config.OpenApiMySQL.Password,
+		config.OpenApiMySQL.Host, config.OpenApiMySQL.Port, config.OpenApiMySQL.Database)
+
+	dbOpenApi, err = sql.Open("mysql", dsnOpenApi)
+	if err != nil {
+		log.Fatal("openapi db connect error:", err)
+	}
+	dbOpenApi.SetMaxIdleConns(5)
+	dbOpenApi.SetMaxOpenConns(50)
+	dbOpenApi.SetConnMaxLifetime(5 * time.Minute)
+
+	if err = dbOpenApi.Ping(); err != nil {
+		log.Fatal("openapi db ping error:", err)
 	}
 }
 
@@ -85,7 +104,6 @@ func MySQLCreateNovel(n models.Novel) (int64, error) {
 	}
 	return result.LastInsertId()
 }
-
 
 // MySQLUpdateNovel 更新小说
 func MySQLUpdateNovel(n models.Novel) (bool, error) {
@@ -325,4 +343,30 @@ func MySQLDeleteChapterByNovelIDAndIndex(novel_id string, chapterIndex int) (boo
 	}
 	rowsAffected, _ := result.RowsAffected()
 	return rowsAffected > 0, nil
+}
+
+// MySQLGetNovelByID 根据ID获取小说
+func MySQLGetOpenapiUserbyApplesub(apple_sub string) (models.User, bool) {
+	var user models.User
+
+	query := `SELECT id, username, sub, apple_sub 
+	          FROM openapi_user 
+	          WHERE apple_sub = ? 
+	          LIMIT 1`
+
+	err := dbOpenApi.QueryRow(query, apple_sub).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Sub,
+		&user.AppleSub,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return user, false
+		}
+		log.Println("query error:", err)
+		return user, false
+	}
+
+	return user, true
 }

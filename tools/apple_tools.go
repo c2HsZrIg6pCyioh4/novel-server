@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"novel-server/web/models"
 	"os"
 	"time"
 
@@ -66,7 +67,7 @@ func GenerateAppleClientSecret(expireSeconds int64) (string, error) {
 }
 
 // ExchangeCodeForToken 使用 authorization code 换取 token
-func ExchangeCodeForToken(code string) (map[string]interface{}, error) {
+func AppleExchangeCodeForToken(code string) (map[string]interface{}, error) {
 	var config, _ = GetAppConfig("config.yaml")
 	clientSecret, err := GenerateAppleClientSecret(0)
 	if err != nil {
@@ -95,4 +96,24 @@ func ExchangeCodeForToken(code string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return tokenData, nil
+}
+
+// AppleDecodeIDToken 解析 Apple 返回的 id_token，并映射到 OAuthUser
+func AppleDecodeIDToken(idToken string) (*models.AppleOAuthUser, error) {
+	token, _, err := jwt.NewParser().ParseUnverified(idToken, jwt.MapClaims{})
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		// 转成 JSON 再反序列化到结构体
+		data, _ := json.Marshal(claims)
+		var user models.AppleOAuthUser
+		if err := json.Unmarshal(data, &user); err != nil {
+			return nil, err
+		}
+		return &user, nil
+	}
+
+	return nil, fmt.Errorf("cannot parse claims")
 }

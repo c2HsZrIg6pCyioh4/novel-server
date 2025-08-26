@@ -25,6 +25,13 @@ type AppConfig struct {
 		Port     string `json:"port"`
 		Database string `json:"database"`
 	} `json:"mysql"`
+	OpenApiMySQL struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Host     string `json:"host"`
+		Port     string `json:"port"`
+		Database string `json:"database"`
+	} `json:"openapi_mysql"`
 	Weixin struct {
 		URL            string `json:"url"`
 		AppID          string `json:"app_id"`
@@ -50,7 +57,8 @@ type AppConfig struct {
 	// Token 中间件相关配置
 	Auth_status bool `json:"auth_Status"` // 是否启用 Token 认证
 	// ---------- 新增 OAuth 配置 ----------
-	OAuth map[string]models.OAuthConfig `json:"oauth"` // key: "apple", "google"
+	OAuth     map[string]models.OAuthConfig `json:"oauth"` // key: "apple", "google"
+	JwtSecret string                        `json:"jwtsecret"`
 }
 
 var AppConfigInstance *AppConfig
