@@ -43,7 +43,9 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 			return models.OAuthToken{Token: ""}
 		}
 		use, _ := tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
+		log.Print(use)
 		tempToken, _ := tools.GenerateJWT(use.Sub, 4) // 4小时有效
+		log.Print(tempToken)
 		return models.OAuthToken{
 			Token: tempToken,
 		}
