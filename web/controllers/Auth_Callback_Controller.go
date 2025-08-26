@@ -32,12 +32,12 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 			return models.OAuthToken{Token: ""}
 		}
 		tokenResponse, _ := tools.AppleExchangeCodeForToken(req.Code)
-		accessToken, ok := tokenResponse["access_token"].(string)
-		if !ok || accessToken == "" {
-			log.Println("access_token 为空或类型错误:", tokenResponse)
+		idTokenStr, ok := tokenResponse["id_token"].(string)
+		if !ok || idTokenStr == "" {
+			log.Println("id_token 为空或类型错误:", tokenResponse)
 			return models.OAuthToken{Token: ""}
 		}
-		apple_user, err := tools.AppleDecodeIDToken(accessToken)
+		apple_user, err := tools.AppleDecodeIDToken(idTokenStr)
 		if err != nil {
 			log.Println("解析 Apple ID Token 失败:", err)
 			return models.OAuthToken{Token: ""}
