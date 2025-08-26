@@ -373,9 +373,8 @@ func MySQLGetOpenapiUserbyApplesub(apple_sub string) (models.User, bool) {
 
 // MySQLCreateOpenapiUser 新增用户
 func MySQLCreateOpenapiUser(user models.User) (int64, error) {
-	query := `INSERT INTO users (sub, apple_sub, email) 
-VALUES (?, ?, ?, ?, ?, ?, ?);`
-
+	query := `INSERT INTO users (sub, apple_sub, email) VALUES (?, ?, ?)`
+	log.Printf("执行 SQL: %s, 参数: sub=%s, apple_sub=%s, email=%s", query, user.Sub, user.AppleSub, user.Email)
 	result, err := dbOpenApi.Exec(query,
 		user.Sub,
 		user.AppleSub,
