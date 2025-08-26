@@ -59,7 +59,7 @@ func TokenAuthMiddleware(validTokens []string, enableAuth bool) iris.Handler {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			config, _ := GetAppConfig("config.yaml")
-			return config.JwtSecret, nil
+			return []byte(config.JwtSecret), nil
 		})
 		if err != nil || !token.Valid {
 			sendFail(ctx, ErrorCode.AuthTokenInvalid)
