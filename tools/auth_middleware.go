@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -83,12 +84,16 @@ func sendFail(ctx iris.Context, code int) {
 
 // GenerateJWT 生成短期 JWT token
 func GenerateJWT(userID string, expireHours int) (string, error) {
+	log.Print(userID)
 	claims := jwt.MapClaims{
 		"sub": userID,
 		"exp": time.Now().Add(time.Duration(expireHours) * time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	}
+	log.Print(claims)
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	log.Print(token)
 	config, _ := GetAppConfig("config.yaml")
+	log.Print(token.SignedString(config.JwtSecret))
 	return token.SignedString(config.JwtSecret)
 }
