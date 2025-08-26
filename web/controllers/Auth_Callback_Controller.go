@@ -42,6 +42,7 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 			log.Println("解析 Apple ID Token 失败:", err)
 			return models.OAuthToken{Token: ""}
 		}
+		log.Println(apple_user.SUB)
 		use, _ := tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
 		tempToken, _ := tools.GenerateJWT(use.Sub, 4) // 4小时有效
 		return models.OAuthToken{
