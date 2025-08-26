@@ -43,7 +43,17 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 			return models.OAuthToken{Token: ""}
 		}
 		log.Println(apple_user.SUB)
-		use, _ := tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
+		// 3. 查询数据库中是否存在该用户
+		use, status := tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
+		if !status {
+			newUser := models.User{
+				Sub:      apple_user.SUB,
+				Email:    apple_user.Email,
+				AppleSub: apple_user.SUB,
+			}
+			tools.MySQLCreateOpenapiUser(newUser)
+			use, status = tools.MySQLGetOpenapiUserbyApplesub(apple_user.SUB)
+		}
 		tempToken, _ := tools.GenerateJWT(use.Sub, 4) // 4小时有效
 		return models.OAuthToken{
 			Token: tempToken,

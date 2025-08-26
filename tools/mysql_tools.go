@@ -345,7 +345,7 @@ func MySQLDeleteChapterByNovelIDAndIndex(novel_id string, chapterIndex int) (boo
 	return rowsAffected > 0, nil
 }
 
-// MySQLGetNovelByID 根据ID获取小说
+// MySQLGetOpenapiUserbyApplesub 根据ID获取用户信息
 func MySQLGetOpenapiUserbyApplesub(apple_sub string) (models.User, bool) {
 	var user models.User
 
@@ -369,4 +369,21 @@ func MySQLGetOpenapiUserbyApplesub(apple_sub string) (models.User, bool) {
 	}
 
 	return user, true
+}
+
+// MySQLCreateOpenapiUser 新增用户
+func MySQLCreateOpenapiUser(user models.User) (int64, error) {
+	query := `INSERT INTO users (sub, apple_sub, email) 
+VALUES (?, ?, ?, ?, ?, ?, ?);`
+
+	result, err := dbOpenApi.Exec(query,
+		user.Sub,
+		user.AppleSub,
+		user.Email,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
 }
