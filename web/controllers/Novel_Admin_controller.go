@@ -30,7 +30,6 @@ func (c *NovelAdminController) Get() ([]models.Novel, error) {
 
 // GET /novels/{id}
 func (c *NovelAdminController) GetBy(novel_id string) (models.Novel, error) {
-	log.Printf("22222")
 	novel, ok := tools.MySQLGetNovelByIDForAudit(novel_id)
 	if !ok {
 		log.Printf("获取小说 ID=%v 失败", novel_id)
@@ -41,7 +40,6 @@ func (c *NovelAdminController) GetBy(novel_id string) (models.Novel, error) {
 
 // GET /novels/{id}
 func (c *NovelAdminController) GetBy_novelid(novel_id string) (models.Novel, error) {
-	log.Printf("33333")
 	novel, ok := tools.MySQLGetNovelByIDForAudit(novel_id)
 	if !ok {
 		log.Printf("获取小说 ID=%v 失败", novel_id)
@@ -52,7 +50,6 @@ func (c *NovelAdminController) GetBy_novelid(novel_id string) (models.Novel, err
 
 // POST /admin/novels/{novel_id}/audit
 func (c *NovelAdminController) PostByAudit(novel_id string) tools.Response {
-	log.Printf("执行了这个post修改小说审核状态")
 	var body struct {
 		Status int `json:"status"`
 	}
@@ -82,7 +79,6 @@ func (c *NovelAdminController) PostByAudit(novel_id string) tools.Response {
 
 // POST /novels
 func (c *NovelAdminController) Post(newNovel models.Novel) (models.Novel, error) {
-	log.Printf("执行了这个post创建小说")
 	id, err := tools.MySQLCreateNovel(newNovel)
 	if err != nil {
 		log.Printf("创建小说失败: %v", err)
@@ -117,7 +113,6 @@ func (c *NovelAdminController) DeleteBy(novel_id string) tools.Response {
 
 // GET /novels/{novel_id}/chapters
 func (c *NovelAdminController) GetByNovelId(novel_id string) ([]models.Chapter, error) {
-	log.Printf("获取小说  ")
 	chapters, ok := tools.MySQLGetChaptersByNovelID(novel_id)
 	if !ok {
 		log.Printf("获取小说 ID=%V 的章节失败", novel_id)
