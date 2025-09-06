@@ -57,9 +57,12 @@ func InitMySQLClient() {
 // Novel (书籍) 操作
 //////////////////////////////////////////////////////
 
-// MySQLGetAllNovels 获取所有小说
+// MySQLGetAllNovels (默认，只返回已审核通过的书籍)
 func MySQLGetAllNovels() ([]models.Novel, bool) {
-	query := `SELECT id, novel_id,name, author, category, status, description, cover_url, created_at, updated_at FROM novels ORDER BY id DESC`
+	query := `SELECT id, novel_id, name, author, category, status, description, cover_url, created_at, updated_at
+              FROM novels
+              WHERE audit_status = 1
+              ORDER BY id DESC`
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Printf("查询所有小说失败: %v", err)
@@ -80,11 +83,14 @@ func MySQLGetAllNovels() ([]models.Novel, bool) {
 	return novels, true
 }
 
-// MySQLGetNovelByID 根据ID获取小说
+// MySQLGetNovelByID (默认：只返回已通过审核的书籍)
 func MySQLGetNovelByID(novel_id string) (models.Novel, bool) {
 	var n models.Novel
-	query := `SELECT id, name, author, category, status, description, cover_url, created_at, updated_at FROM novels WHERE novel_id = ?`
-	err := db.QueryRow(query, novel_id).Scan(&n.ID, &n.Name, &n.Author, &n.Category, &n.Status, &n.Description, &n.CoverURL, &n.CreatedAt, &n.UpdatedAt)
+	query := `SELECT id, novel_id, name, author, category, status, description, cover_url, created_at, updated_at
+              FROM novels
+              WHERE novel_id = ? AND audit_status = 1
+              LIMIT 1`
+	err := db.QueryRow(query, novel_id).Scan(&n.ID, &n.Novel_Id, &n.Name, &n.Author, &n.Category, &n.Status, &n.Description, &n.CoverURL, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return n, false
@@ -131,15 +137,30 @@ func MySQLDeleteNovel(novel_id string) (bool, error) {
 // Chapter (章节) 操作
 //////////////////////////////////////////////////////
 
-// MySQLGetChaptersByNovelID 获取某本小说的所有章节
+// MySQLGetChaptersByNovelID (默认：只有当小说已审核通过时，返回该小说的所有章节)
 func MySQLGetChaptersByNovelID(novel_id string) ([]models.Chapter, bool) {
-	query := `
-		SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
-		FROM chapters 
-		WHERE novel_id = ? 
-		ORDER BY chapter_index ASC
-	`
+	// 先检查书籍审核状态
+	var auditStatus int
+	err := db.QueryRow("SELECT audit_status FROM novels WHERE novel_id = ?", novel_id).Scan(&auditStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("小说不存在：%s", novel_id)
+			return nil, false
+		}
+		log.Printf("查询小说审核状态失败: %v", err)
+		return nil, false
+	}
+	if auditStatus != 1 {
+		// 未审核通过，不允许查看章节
+		return nil, false
+	}
 
+	query := `
+        SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
+        FROM chapters 
+        WHERE novel_id = ? 
+        ORDER BY chapter_index ASC
+    `
 	rows, err := db.Query(query, novel_id)
 	if err != nil {
 		log.Printf("查询小说 ID=%v 的章节失败: %v", novel_id, err)
@@ -160,14 +181,53 @@ func MySQLGetChaptersByNovelID(novel_id string) ([]models.Chapter, bool) {
 	return chapters, true
 }
 
-// MySQLGetChaptersByNovelID 获取某本小说的所有章节
+// MySQLGetChaptersDetailByNovelID (默认：只有当小说已审核通过时，返回章节目录)
 func MySQLGetChaptersDetailByNovelID(novel_id string) ([]models.ChapterDetail, bool) {
+	// 检查小说是否通过审核
+	var auditStatus int
+	err := db.QueryRow("SELECT audit_status FROM novels WHERE novel_id = ?", novel_id).Scan(&auditStatus)
+	if err != nil {
+		log.Printf("查询小说审核状态失败: %v", err)
+		return nil, false
+	}
+	if auditStatus != 1 {
+		return nil, false
+	}
+
 	query := `
-		SELECT chapter_index,title
-		FROM chapters 
-		WHERE novel_id = ? 
-		ORDER BY chapter_index ASC
-	`
+        SELECT chapter_index, title
+        FROM chapters 
+        WHERE novel_id = ? 
+        ORDER BY chapter_index ASC
+    `
+	rows, err := db.Query(query, novel_id)
+	if err != nil {
+		log.Printf("查询小说 ID=%v 的章节失败: %v", novel_id, err)
+		return nil, false
+	}
+	defer rows.Close()
+
+	var chaptersdetail []models.ChapterDetail
+	for rows.Next() {
+		var c models.ChapterDetail
+		err := rows.Scan(&c.ChapterIndex, &c.Title)
+		if err != nil {
+			log.Printf("扫描章节数据失败: %v", err)
+			return nil, false
+		}
+		chaptersdetail = append(chaptersdetail, c)
+	}
+	return chaptersdetail, true
+}
+
+// MySQLGetChaptersDetailByNovelIDForAudit (管理后台/审核专用：返回所有章节，不限制小说审核状态)
+func MySQLGetChaptersDetailByNovelIDForAudit(novel_id string) ([]models.ChapterDetail, bool) {
+	query := `
+        SELECT chapter_index, title
+        FROM chapters 
+        WHERE novel_id = ? 
+        ORDER BY chapter_index ASC
+    `
 	rows, err := db.Query(query, novel_id)
 	if err != nil {
 		log.Printf("查询小说 ID=%v 的章节失败: %v", novel_id, err)
@@ -205,10 +265,15 @@ func MySQLGetChapterByID(novel_id string) (models.Chapter, bool) {
 
 // 获取小说某一章（通过 novel_id + chapter_index）
 func MySQLGetChapterByNovelIDAndIndex(novel_id string, chapterIndex int) (models.Chapter, bool) {
+	println("执行到了这里")
 	query := `
-		SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
-		FROM chapters
-		WHERE novel_id = ? AND chapter_index = ?
+		SELECT c.id, c.novel_id, c.title, c.content, c.word_count, 
+		       c.chapter_index, c.created_at, c.updated_at
+		FROM chapters c
+		INNER JOIN novels n ON c.novel_id = n.novel_id
+		WHERE c.novel_id = ? 
+		  AND c.chapter_index = ? 
+		  AND n.audit_status = 1   -- 只允许已审核的小说
 		LIMIT 1
 	`
 	row := db.QueryRow(query, novel_id, chapterIndex)
@@ -385,4 +450,116 @@ func MySQLCreateOpenapiUser(user models.User) (int64, error) {
 	}
 
 	return result.LastInsertId()
+}
+
+// MySQLAuditNovel (更新小说审核状态：0/1/2)
+func MySQLAuditNovel(novelID string, status int, auditBy string) (bool, error) {
+	query := `UPDATE novels SET audit_status = ?, audit_by = ?, audit_at = NOW(), updated_at = NOW() WHERE novel_id = ?`
+	res, err := db.Exec(query, status, auditBy, novelID)
+	if err != nil {
+		return false, err
+	}
+	affected, _ := res.RowsAffected()
+	return affected > 0, nil
+}
+
+// MySQLGetNovelWithChaptersForAudit (审核专用：获取一本书并带上其章节)
+func MySQLGetNovelWithChaptersForAudit(novel_id string) (models.Novel, []models.Chapter, bool) {
+	novel, ok := MySQLGetNovelByIDForAudit(novel_id)
+	if !ok {
+		return models.Novel{}, nil, false
+	}
+	chapters, ok := MySQLGetChaptersByNovelIDForAudit(novel_id)
+	if !ok {
+		// 即便书存在，可能没有章节也返回空 slice
+		return novel, nil, true
+	}
+	return novel, chapters, true
+}
+
+// MySQLGetChaptersByNovelIDForAudit (审核专用：返回某书的所有章节，不受书籍审核状态限制)
+func MySQLGetChaptersByNovelIDForAudit(novel_id string) ([]models.Chapter, bool) {
+	query := `
+        SELECT id, novel_id, title, content, word_count, chapter_index, created_at, updated_at
+        FROM chapters 
+        WHERE novel_id = ? 
+        ORDER BY chapter_index ASC
+    `
+	rows, err := db.Query(query, novel_id)
+	if err != nil {
+		log.Printf("查询小说 ID=%v 的章节失败: %v", novel_id, err)
+		return nil, false
+	}
+	defer rows.Close()
+
+	var chapters []models.Chapter
+	for rows.Next() {
+		var c models.Chapter
+		err := rows.Scan(&c.ID, &c.NovelID, &c.Title, &c.Content, &c.WordCount, &c.ChapterIndex, &c.CreatedAt, &c.UpdatedAt)
+		if err != nil {
+			log.Printf("扫描章节数据失败: %v", err)
+			return nil, false
+		}
+		chapters = append(chapters, c)
+	}
+	return chapters, true
+}
+
+// MySQLGetNovelByIDForAudit (审核专用：返回书籍并包含审核字段)
+func MySQLGetNovelByIDForAudit(novel_id string) (models.Novel, bool) {
+	var n models.Novel
+	query := `SELECT id, novel_id, name, author, category, status, description, cover_url, audit_status, audit_by, audit_at, created_at, updated_at
+              FROM novels
+              WHERE novel_id = ?
+              LIMIT 1`
+	err := db.QueryRow(query, novel_id).Scan(&n.ID, &n.Novel_Id, &n.Name, &n.Author, &n.Category, &n.Status, &n.Description, &n.CoverURL, &n.AuditStatus, &n.AuditBy, &n.AuditAt, &n.CreatedAt, &n.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return n, false
+		}
+		log.Printf("查询小说(审核用) ID=%v 出错: %v", novel_id, err)
+		return n, false
+	}
+	return n, true
+}
+
+// MySQLGetAllNovelsForAudit (管理后台/审核专用：返回所有书籍，带审核字段)
+func MySQLGetAllNovelsForAudit() ([]models.Novel, bool) {
+	query := `SELECT id, novel_id, name, author, category, status, description, cover_url, audit_status, audit_by, audit_at, created_at, updated_at
+              FROM novels
+              ORDER BY id DESC`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Printf("查询所有小说(审核专用)失败: %v", err)
+		return nil, false
+	}
+	defer rows.Close()
+
+	var novels []models.Novel
+	for rows.Next() {
+		var n models.Novel
+		err := rows.Scan(&n.ID, &n.Novel_Id, &n.Name, &n.Author, &n.Category, &n.Status, &n.Description, &n.CoverURL, &n.AuditStatus, &n.AuditBy, &n.AuditAt, &n.CreatedAt, &n.UpdatedAt)
+		if err != nil {
+			log.Printf("扫描小说数据失败: %v", err)
+			return nil, false
+		}
+		novels = append(novels, n)
+	}
+	return novels, true
+}
+
+// MySQLUpdateNovelAudit 更新小说的审核状态
+func MySQLUpdateNovelAudit(novelId string, status int, auditBy string, auditAt time.Time) (bool, error) {
+	query := `UPDATE novels 
+	          SET audit_status = ?, audit_by = ?, audit_at = ?, updated_at = NOW()
+	          WHERE novel_id = ?`
+
+	result, err := db.Exec(query, status, auditBy, auditAt, novelId)
+	if err != nil {
+		log.Printf("更新小说审核状态失败 novel_id=%v err=%v", novelId, err)
+		return false, err
+	}
+
+	rows, _ := result.RowsAffected()
+	return rows > 0, nil
 }

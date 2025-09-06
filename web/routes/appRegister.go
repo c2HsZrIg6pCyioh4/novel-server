@@ -10,4 +10,5 @@ func RegisterRoutes(app *iris.Application) {
 	RegisterHealthRouter(app)
 	RegisterAuthRouter(app)
 	RegisterImageRouter(app)
+	RegisterNovelAdminRouter(app)
 }
