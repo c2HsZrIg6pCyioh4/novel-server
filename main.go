@@ -3,16 +3,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/kataras/iris/v12/middleware/logger"
-	"github.com/kataras/iris/v12/middleware/pprof"
-	iris_redis "github.com/kataras/iris/v12/sessions/sessiondb/redis"
 	prometheusMiddleware "novel-server/prometheus"
 	tools "novel-server/tools"
 	"time"
 
+	"github.com/kataras/iris/v12/middleware/logger"
+	"github.com/kataras/iris/v12/middleware/pprof"
+	iris_redis "github.com/kataras/iris/v12/sessions/sessiondb/redis"
+
+	routes "novel-server/web/routes"
+
 	"github.com/kataras/iris/v12"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	routes "novel-server/web/routes"
 )
 
 func main() {
@@ -45,6 +47,7 @@ func main() {
 	iris_redis_db := iris_redis.New(iris_redis.Config{
 		Network:   "tcp",
 		Addr:      config.Redis.Addr + ":" + config.Redis.Port,
+		Username:  config.Redis.Username, // Specify your Redis password if required
 		Password:  config.Redis.Password, // Specify your Redis password if required
 		Timeout:   time.Duration(30) * time.Second,
 		MaxActive: 10,
