@@ -3,8 +3,9 @@ package tools
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var redisClient *redis.Client
@@ -15,6 +16,7 @@ func InitRedisClient() {
 	redisClient = redis.NewClient(&redis.Options{
 		Network:     "tcp",
 		Addr:        config.Redis.Addr + ":" + config.Redis.Port,
+		Username:    config.Redis.Username, // Specify your Redis password if required
 		Password:    config.Redis.Password, // Specify your Redis password if required
 		DB:          0,                     // Specify your Redis database number
 		MaxRetries:  3,

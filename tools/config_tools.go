@@ -15,6 +15,7 @@ type AppConfig struct {
 		Network  string `json:"network"`
 		Addr     string `json:"addr"`
 		Port     string `json:"port"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 		Prefix   string `json:"prefix"`
 	} `json:"redis"`
