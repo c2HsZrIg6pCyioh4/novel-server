@@ -20,6 +20,7 @@ func (c *Auth_Config_Controller) Get(provider string) models.OAuthClientConfig {
 		ClientID:    data.ClientID,
 		RedirectURI: data.RedirectURI,
 		Scope:       data.Scope,
+		Oauth_Domain: data.Oauth_Domain,
 	}
 	return clientConfig
 }

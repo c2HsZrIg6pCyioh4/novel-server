@@ -13,6 +13,7 @@ type OAuthConfig struct {
 
 // OAuthClientConfig 返回给前端的配置
 type OAuthClientConfig struct {
+	Oauth_Domain string `json:"oauth_domain"`
 	ClientID     string `json:"client_id"`
 	RedirectURI  string `json:"redirect_uri"`
 	Scope        string `json:"scope"`
