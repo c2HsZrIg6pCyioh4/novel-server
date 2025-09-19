@@ -8,6 +8,7 @@ type OAuthConfig struct {
 	P8Path      string `json:"p8_path"`
 	RedirectURI string `json:"redirect_uri"`
 	Scope       string `json:"scope"`
+	Oauth_Domain string `json:"oauth_domain"`
 }
 
 // OAuthClientConfig 返回给前端的配置
