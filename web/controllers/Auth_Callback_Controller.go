@@ -76,11 +76,18 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 		clientID := config.OAuth["generic"].ClientID
 		clientSecret := config.OAuth["generic"].TeamID
 		redirectURI := config.OAuth["generic"].RedirectURI
-		tokenResponse, _ := ExchangeCodeForToken(tokenEndpoint, clientID, clientSecret, req.Code, redirectURI)
+		log.Printf("tokenEndpoint: %s, clientID: %s, clientSecret: %s, code: %s, redirectURI: %s", tokenEndpoint, clientID, clientSecret, req.Code, redirectURI)
+
+		tokenResponse, err := ExchangeCodeForToken(tokenEndpoint, clientID, clientSecret, req.Code, redirectURI)
+		if err != nil {
+			log.Println("获取 token 失败:", err)
+			return models.OAuthToken{Token: ""}
+		}
 		userInfoEndpoint := "https://" + config.OAuth["generic"].Oauth_Domain + "/oauth/user" // 确认具体路径
 		user, err := FetchUserInfo(userInfoEndpoint, tokenResponse.AccessToken)
 		if err != nil {
 			log.Println("获取用户信息失败:", err)
+			return models.OAuthToken{Token: ""}
 		} else {
 			log.Printf("User: %+v", user)
 		}
@@ -153,6 +160,7 @@ type User struct {
 
 // FetchUserInfo 使用 AccessToken 获取用户信息
 func FetchUserInfo(userInfoEndpoint, accessToken string) (*User, error) {
+	log.Println("获取用户信息accessToken:", accessToken)
 	req, err := http.NewRequest("GET", userInfoEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("构建请求失败: %w", err)
