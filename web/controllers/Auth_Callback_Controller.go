@@ -83,7 +83,7 @@ func (c *Auth_Callback_Controller) Post(provider string) models.OAuthToken {
 			log.Println("获取 token 失败:", err)
 			return models.OAuthToken{Token: ""}
 		}
-		userInfoEndpoint := "https://" + config.OAuth["generic"].Oauth_Domain + "/oauth/user" // 确认具体路径
+		userInfoEndpoint := "https://" + config.OAuth["generic"].Oauth_Domain + "/oauth/userinfo" // 确认具体路径
 		user, err := FetchUserInfo(userInfoEndpoint, tokenResponse.AccessToken)
 		if err != nil {
 			log.Println("获取用户信息失败:", err)
